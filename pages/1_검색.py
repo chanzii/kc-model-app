@@ -3,7 +3,7 @@ import pandas as pd
 from lib.data_io import load_df
 from lib.rules import expiry_status
 
-st.title("🔍 STYLENO 검색")
+st.title("🔍 STYLE NO 검색")
 
 rep = load_df("rep")
 style = load_df("style")
