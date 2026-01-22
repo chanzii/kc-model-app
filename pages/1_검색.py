@@ -70,10 +70,47 @@ with tab1:
             df["status"] = statuses
 
             # 보기 좋은 컬럼만
-            st.dataframe(
-                df[["rep_id","hub","category","fiber_key","kc_no","cert_date","expiry_date","status","memo"]],
-                use_container_width=True
-            )
+           # 상태(잔여기간) 컬럼은 이미 df에 status 또는 우리가 만든 값이 있을 수 있어서
+# 여기서는 통일해서 "잔여기간"을 새로 만들고 화면용으로 rename합니다.
+
+# 잔여기간 생성
+status_list = []
+for _, r in df.iterrows():
+    icon, msg = expiry_status(r.get("expiry_date",""))
+    status_list.append(f"{icon} {msg}")
+df = df.copy()
+df["잔여기간"] = status_list
+
+# 화면용 컬럼명 변경
+df_display = df.rename(columns={
+    "rep_style_no": "스타일",
+    "hub": "생산처",
+    "category": "분류",
+    "fiber_key": "조성섬유",
+    "kc_no": "인증번호",
+    "cert_date": "신고일",
+    "expiry_date": "만료일",
+    "memo": "등록",
+    "updated_at": "등록일",
+})
+
+# 보여줄 순서(검색은 등록일/등록이 없을 수도 있어서 있는 것만 표시)
+display_cols = [
+    "스타일",
+    "생산처",
+    "분류",
+    "조성섬유",
+    "인증번호",
+    "신고일",
+    "만료일",
+    "잔여기간",
+    "등록",
+    "등록일",
+]
+display_cols = [c for c in display_cols if c in df_display.columns]
+
+st.dataframe(df_display[display_cols], use_container_width=True)
+
 
             st.caption("조성섬유를 선택하지 않으면 조성 조건은 적용되지 않습니다. (선택하면 정확히 일치로 필터)")
 
