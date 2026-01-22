@@ -40,18 +40,38 @@ if rep.empty:
     st.info("대표모델 데이터가 없습니다.")
 else:
     view = rep.copy()
+
+    # 잔여기간(상태) 계산
     status_list = []
     for _, r in view.iterrows():
         icon, msg = expiry_status(r.get("expiry_date", ""))
         status_list.append(f"{icon} {msg}")
-    view["status"] = status_list
+    view["잔여기간"] = status_list
 
-    # rep_id는 내부키라 숨김, rep_style_no를 보여줌
-    cols = ["rep_style_no", "hub", "category", "fiber_key", "kc_no", "cert_date", "expiry_date", "status", "memo", "updated_by", "updated_at"]
-    # 혹시 일부 컬럼이 없으면 있는 것만 표시
-    cols = [c for c in cols if c in view.columns]
+    # 화면용 컬럼명 한글로 변경
+    view_display = view.rename(columns={
+        "rep_style_no": "스타일",
+        "hub": "생산처",
+        "category": "분류",
+        "fiber_key": "조성섬유",
+        "kc_no": "인증번호",
+        "cert_date": "신고일",
+        "expiry_date": "만료일",
+        "memo": "등록",
+        "updated_at": "등록일",
+    })
 
-    st.dataframe(view[cols], use_container_width=True)
+    # 화면 표시 순서
+    display_cols = [
+        "스타일",
+        "생산처",
+        "분류",
+        "조성섬유",
+        "인증번호",
+        "신고일",
+        "만료일",
+        "잔여기간
+
 
 st.markdown("---")
 
