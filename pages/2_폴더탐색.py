@@ -9,6 +9,7 @@ rep = load_df("rep")
 hubs = load_df("hubs")
 cats = load_df("cats")
 fibers = load_df("fibers")
+style_map = load_df("style")
 
 # 호환: rep_style_no 없으면 추가
 if not rep.empty and "rep_style_no" not in rep.columns:
@@ -65,6 +66,54 @@ def make_korean_table_from_rep(df: pd.DataFrame) -> pd.DataFrame:
     display_cols = [c for c in display_cols if c in df_display.columns]
     return df_display[display_cols]
 
+def show_linked_styles_for_rep(rep_df: pd.DataFrame):
+    """
+    rep_df: 현재 화면에서 필터된 대표모델 df (rep_id 포함)
+    """
+    if style_map.empty:
+        st.info("동일모델(STYLENO) 연결 데이터가 없습니다.")
+        return
+    if rep_df is None or rep_df.empty:
+        return
+    if "rep_id" not in rep_df.columns:
+        st.warning("rep_id 컬럼이 없어 동일모델 연결 조회를 할 수 없습니다.")
+        return
+
+    rep_df = rep_df.copy()
+    rep_lookup = {r["rep_id"]: r for _, r in rep_df.iterrows()}
+
+    def rep_label(rid: str) -> str:
+        r = rep_lookup.get(rid, {})
+        rep_style = (r.get("rep_style_no") or "").strip() or "(대표스타일없음)"
+        hub = (r.get("hub") or "").strip()
+        cat = (r.get("category") or "").strip()
+        fiber = (r.get("fiber_key") or "").strip()
+        kc = (r.get("kc_no") or "").strip() or "(KC없음)"
+        return f"{rep_style} | {hub} | {cat} | {fiber} | {kc}"
+
+    st.markdown("### 🔗 선택한 대표모델에 연결된 동일모델(STYLENO)")
+
+    rid = st.selectbox(
+        "대표모델 선택",
+        options=rep_df["rep_id"].tolist(),
+        format_func=rep_label,
+        key="folder_rep_link_view_selectbox",
+    )
+
+    linked = style_map[style_map["rep_id"] == rid].copy()
+    if "style_no" in linked.columns:
+        linked["style_no"] = linked["style_no"].astype(str)
+        linked = linked.sort_values("style_no")
+
+    st.write(f"연결된 동일모델: **{len(linked)}개**")
+
+    if linked.empty:
+        st.info("연결된 동일모델이 없습니다.")
+        return
+
+    st.dataframe(linked[["style_no"]].rename(columns={"style_no": "STYLENO"}), use_container_width=True)
+    st.text_area("복사용(STYLENO 줄바꿈)", "\n".join(linked["style_no"].tolist()), height=140, key="folder_rep_link_view_copy")
+
 st.caption("생산처/분류/조성섬유를 일부만 선택해도 아래 결과가 필터되어 표시됩니다.")
 
 col1, col2, col3 = st.columns(3)
@@ -102,3 +151,4 @@ if df.empty:
     st.warning("조건에 맞는 대표모델이 없습니다.")
 else:
     st.dataframe(make_korean_table_from_rep(df), use_container_width=True)
+    show_linked_styles_for_rep(df)
