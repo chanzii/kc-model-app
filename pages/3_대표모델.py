@@ -231,3 +231,50 @@ if submitted:
         save_df_and_commit("rep", rep, commit_msg=f"add rep_model {rep_id}")
         log("REP_ADD", user, f"{rep_id} style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
         st.success("✅ 등록 완료")
+
+# -----------------------------
+# 삭제 (관리자)
+# -----------------------------
+st.markdown("---")
+st.subheader("🗑️ 대표모델 삭제 (관리자)")
+
+if st.session_state.get("is_admin") is not True:
+    st.info("관리자 모드에서만 삭제가 가능합니다.")
+else:
+    style = load_df("style")
+
+    rep2 = rep.copy()
+    rep2["label"] = (
+        rep2["rep_style_no"].fillna("").replace("", "(대표스타일없음)") + " | " +
+        rep2["hub"] + " | " + rep2["category"] + " | " + rep2["fiber_key"] + " | " +
+        rep2["kc_no"].fillna("").replace("", "(KC없음)") + " | " +
+        rep2["rep_id"]
+    )
+    label = st.selectbox("삭제할 대표모델 선택", options=rep2["label"].tolist(), key="del_rep_sel")
+    del_rep_id = label.split(" | ")[-1].strip()
+
+    linked_cnt = 0
+    if not style.empty and "rep_id" in style.columns:
+        linked_cnt = (style["rep_id"] == del_rep_id).sum()
+
+    st.warning(f"이 대표모델에 연결된 동일모델(STYLENO): {linked_cnt}개")
+
+    cascade = st.checkbox("연결된 동일모델도 함께 삭제(연결 해제)", value=False)
+    confirm = st.text_input("삭제 확인 입력", placeholder="DELETE")
+
+    if st.button("대표모델 삭제 실행", type="primary"):
+        if confirm.strip().upper() != "DELETE":
+            st.error("삭제 확인 입력란에 DELETE를 입력하세요.")
+            st.stop()
+
+        # 동일모델 연결도 삭제(해제)
+        if cascade and not style.empty:
+            style = style[style["rep_id"] != del_rep_id].copy()
+            save_df_and_commit("style", style, commit_msg=f"delete style links of {del_rep_id}")
+
+        # 대표모델 삭제
+        rep = rep[rep["rep_id"] != del_rep_id].copy()
+        save_df_and_commit("rep", rep, commit_msg=f"delete rep_model {del_rep_id}")
+
+        st.success("✅ 삭제 완료")
+        st.rerun()
