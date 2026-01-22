@@ -33,37 +33,49 @@ tab1, tab2 = st.tabs(["조건 검색", "STYLENO 검색"])
 # 조건 검색
 # ----------------------------
 with tab1:
-    st.subheader("조건으로 대표모델 찾기")
+    st.subheader("조건으로 대표모델 찾기 (일부만 선택해도 검색됨)")
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        hub = st.selectbox("생산거점", options=[""] + active_hubs)
+        hub = st.selectbox("생산거점", options=["(전체)"] + active_hubs)
     with col2:
-        cat = st.selectbox("품목군", options=[""] + active_cats)
+        cat = st.selectbox("품목군", options=["(전체)"] + active_cats)
     with col3:
-        selected = st.multiselect("조성섬유(정확히 일치)", options=active_fibers)
+        selected = st.multiselect("조성섬유(선택 시: 정확히 일치)", options=active_fibers)
 
     if st.button("검색", type="primary", key="btn_cond_search"):
-        if not hub or not cat or not selected:
-            st.warning("생산거점/품목군/조성섬유를 모두 선택하세요.")
-        else:
-            key = normalize_fiber_key(selected, fiber_order)
+        if rep.empty:
+            st.error("대표모델 데이터가 없습니다.")
+            st.stop()
 
-            if rep.empty:
-                st.error("대표모델 데이터가 없습니다.")
-            else:
-                hit = rep[(rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == key)]
-                if hit.empty:
-                    st.error("❌ 해당 조건으로 등록된 대표모델이 없습니다.")
-                else:
-                    row = hit.iloc[0].to_dict()
-                    icon, msg = expiry_status(row.get("expiry_date",""))
-                    st.success("✅ 대표모델을 찾았습니다.")
-                    st.markdown(f"- **KC번호:** {row.get('kc_no','')}")
-                    st.markdown(f"- **상태:** {icon} {msg}")
-                    st.markdown(f"- **인증일:** {row.get('cert_date','')}")
-                    st.markdown(f"- **유효기간:** {row.get('expiry_date','')}")
-                    st.markdown(f"- **대표모델ID:** `{row.get('rep_id','')}`")
+        df = rep.copy()
+
+        if hub != "(전체)":
+            df = df[df["hub"] == hub]
+        if cat != "(전체)":
+            df = df[df["category"] == cat]
+        if selected:
+            key = normalize_fiber_key(selected, fiber_order)
+            df = df[df["fiber_key"] == key]
+
+        if df.empty:
+            st.warning("조건에 맞는 대표모델이 없습니다.")
+        else:
+            # 상태 컬럼 붙여서 리스트 출력
+            statuses = []
+            for _, r in df.iterrows():
+                icon, msg = expiry_status(r.get("expiry_date",""))
+                statuses.append(f"{icon} {msg}")
+            df = df.copy()
+            df["status"] = statuses
+
+            # 보기 좋은 컬럼만
+            st.dataframe(
+                df[["rep_id","hub","category","fiber_key","kc_no","cert_date","expiry_date","status","memo"]],
+                use_container_width=True
+            )
+
+            st.caption("조성섬유를 선택하지 않으면 조성 조건은 적용되지 않습니다. (선택하면 정확히 일치로 필터)")
 
 # ----------------------------
 # STYLENO 검색 (prefix/contains)
