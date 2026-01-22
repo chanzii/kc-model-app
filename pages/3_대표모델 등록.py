@@ -16,6 +16,10 @@ fibers = load_df("fibers")
 if not rep.empty and "rep_style_no" not in rep.columns:
     rep["rep_style_no"] = ""
 
+# ✅ 2단계 저장(중복 확인) 세션 초기화
+if "rep_pending_save" not in st.session_state:
+    st.session_state["rep_pending_save"] = None
+
 # 활성 마스터만
 active_hubs = hubs[hubs.get("active", "").str.upper() == "TRUE"]["hub"].tolist() if not hubs.empty else []
 active_cats = cats[cats.get("active", "").str.upper() == "TRUE"]["category"].tolist() if not cats.empty else []
@@ -62,21 +66,12 @@ else:
         "updated_at": "등록일",
     })
 
-    # 화면 표시 순서
     display_cols = [
-        "스타일",
-        "생산처",
-        "분류",
-        "조성섬유",
-        "인증번호",
-        "신고일",
-        "만료일",
-        "잔여기간",
-        "등록",
-        "등록일",
+        "스타일", "생산처", "분류", "조성섬유",
+        "인증번호", "신고일", "만료일", "잔여기간",
+        "등록", "등록일",
     ]
     display_cols = [c for c in display_cols if c in view_display.columns]
-
     st.dataframe(view_display[display_cols], use_container_width=True)
 
 st.markdown("---")
@@ -169,19 +164,19 @@ if submitted:
     fiber_key = normalize_fiber_key(selected, fiber_order)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if rep.empty:
-        rep = pd.DataFrame(columns=[
+    rep_work = rep.copy()
+    if rep_work.empty:
+        rep_work = pd.DataFrame(columns=[
             "rep_id", "rep_style_no", "hub", "category", "fiber_key",
             "kc_no", "cert_date", "expiry_date", "memo", "updated_at", "updated_by"
         ])
 
-     # ✅ 동일 조건(생산처+분류+조성) 중복 체크: 2단계 저장(체크 + 버튼)
-    conflict = rep[(rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == fiber_key)]
+    # ✅ 동일 조건(생산처+분류+조성) 중복 체크: 중복이면 2단계 저장으로 전환
+    conflict = rep_work[(rep_work["hub"] == hub) & (rep_work["category"] == cat) & (rep_work["fiber_key"] == fiber_key)]
     if mode == "기존 수정" and edit_rep_id:
         conflict = conflict[conflict["rep_id"] != edit_rep_id]
 
     if not conflict.empty:
-        # 1) 저장할 내용 임시 보관(세션)
         st.session_state["rep_pending_save"] = {
             "mode": mode,
             "edit_rep_id": edit_rep_id,
@@ -200,33 +195,33 @@ if submitted:
         st.warning("⚠️ 동일한 [생산처 + 분류 + 조성섬유] 조합의 대표모델이 이미 존재합니다.")
         show_cols = [c for c in ["rep_style_no", "kc_no", "cert_date", "expiry_date", "updated_at", "rep_id"] if c in conflict.columns]
         st.dataframe(conflict[show_cols], use_container_width=True)
-
-        st.info("아래에서 체크 후 ‘그래도 저장’ 버튼을 눌러야 저장됩니다.")
+        st.info("아래 ‘중복 확인 후 저장’에서 체크 후 ‘그래도 저장’을 눌러야 저장됩니다.")
         st.stop()
 
-
+    # ✅ 중복이 아니면 바로 저장
     if mode == "기존 수정" and edit_rep_id:
-        idx = rep[rep["rep_id"] == edit_rep_id].index[0]
+        idx = rep_work[rep_work["rep_id"] == edit_rep_id].index[0]
 
-        rep.at[idx, "rep_style_no"] = rep_style_no.strip()
-        rep.at[idx, "hub"] = hub
-        rep.at[idx, "category"] = cat
-        rep.at[idx, "fiber_key"] = fiber_key
-        rep.at[idx, "kc_no"] = kc_no
-        rep.at[idx, "cert_date"] = cert_date
-        rep.at[idx, "expiry_date"] = expiry_date
-        rep.at[idx, "memo"] = memo
-        rep.at[idx, "updated_at"] = now
-        rep.at[idx, "updated_by"] = user
+        rep_work.at[idx, "rep_style_no"] = rep_style_no.strip()
+        rep_work.at[idx, "hub"] = hub
+        rep_work.at[idx, "category"] = cat
+        rep_work.at[idx, "fiber_key"] = fiber_key
+        rep_work.at[idx, "kc_no"] = kc_no
+        rep_work.at[idx, "cert_date"] = cert_date
+        rep_work.at[idx, "expiry_date"] = expiry_date
+        rep_work.at[idx, "memo"] = memo
+        rep_work.at[idx, "updated_at"] = now
+        rep_work.at[idx, "updated_by"] = user
 
-        save_df_and_commit("rep", rep, commit_msg=f"update rep_model {edit_rep_id}")
+        save_df_and_commit("rep", rep_work, commit_msg=f"update rep_model {edit_rep_id}")
         log("REP_UPDATE", user, f"{edit_rep_id} style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
         st.success("✅ 수정 완료")
+        st.rerun()
 
     else:
         # 새 rep_id 생성
         nums = []
-        for rid in rep["rep_id"].tolist():
+        for rid in rep_work["rep_id"].tolist():
             if isinstance(rid, str) and rid.startswith("RM"):
                 try:
                     nums.append(int(rid[2:]))
@@ -249,10 +244,97 @@ if submitted:
             "updated_by": user,
         }
 
-        rep = pd.concat([rep, pd.DataFrame([new_row])], ignore_index=True)
-        save_df_and_commit("rep", rep, commit_msg=f"add rep_model {rep_id}")
+        rep_work = pd.concat([rep_work, pd.DataFrame([new_row])], ignore_index=True)
+        save_df_and_commit("rep", rep_work, commit_msg=f"add rep_model {rep_id}")
         log("REP_ADD", user, f"{rep_id} style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
         st.success("✅ 등록 완료")
+        st.rerun()
+
+# ✅ 중복일 때: 체크 후 '그래도 저장'로 2단계 저장
+pending = st.session_state.get("rep_pending_save")
+
+if pending is not None:
+    st.markdown("---")
+    st.subheader("⚠️ 중복 확인 후 저장")
+
+    agree = st.checkbox("위 내용을 확인했고, 중복임을 인지한 상태로 등록/수정을 진행합니다.")
+
+    if st.button("그래도 저장", type="primary"):
+        if not agree:
+            st.error("체크박스를 먼저 선택하세요.")
+            st.stop()
+
+        # 최신 rep 다시 로드(안전)
+        rep_latest = load_df("rep")
+        if not rep_latest.empty and "rep_style_no" not in rep_latest.columns:
+            rep_latest["rep_style_no"] = ""
+        rep_work = rep_latest.copy()
+
+        if rep_work.empty:
+            rep_work = pd.DataFrame(columns=[
+                "rep_id", "rep_style_no", "hub", "category", "fiber_key",
+                "kc_no", "cert_date", "expiry_date", "memo", "updated_at", "updated_by"
+            ])
+
+        mode2 = pending["mode"]
+        edit_id2 = pending["edit_rep_id"]
+        user2 = pending["user"]
+        now2 = pending["now"]
+
+        if mode2 == "기존 수정" and edit_id2:
+            idxs = rep_work[rep_work["rep_id"] == edit_id2].index.tolist()
+            if not idxs:
+                st.error("수정 대상 rep_id를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.")
+                st.stop()
+
+            idx = idxs[0]
+            rep_work.at[idx, "rep_style_no"] = pending["rep_style_no"]
+            rep_work.at[idx, "hub"] = pending["hub"]
+            rep_work.at[idx, "category"] = pending["cat"]
+            rep_work.at[idx, "fiber_key"] = pending["fiber_key"]
+            rep_work.at[idx, "kc_no"] = pending["kc_no"]
+            rep_work.at[idx, "cert_date"] = pending["cert_date"]
+            rep_work.at[idx, "expiry_date"] = pending["expiry_date"]
+            rep_work.at[idx, "memo"] = pending["memo"]
+            rep_work.at[idx, "updated_at"] = now2
+            rep_work.at[idx, "updated_by"] = user2
+
+            save_df_and_commit("rep", rep_work, commit_msg=f"update rep_model {edit_id2}")
+            log("REP_UPDATE", user2, f"{edit_id2} style={pending['rep_style_no']} {pending['hub']}/{pending['cat']}/{pending['fiber_key']} KC={pending['kc_no']}")
+            st.success("✅ (중복 확인 후) 수정 완료")
+
+        else:
+            nums = []
+            for rid in rep_work["rep_id"].tolist():
+                if isinstance(rid, str) and rid.startswith("RM"):
+                    try:
+                        nums.append(int(rid[2:]))
+                    except Exception:
+                        pass
+            nxt = (max(nums) + 1) if nums else 1
+            rep_id = f"RM{nxt:04d}"
+
+            new_row = {
+                "rep_id": rep_id,
+                "rep_style_no": pending["rep_style_no"],
+                "hub": pending["hub"],
+                "category": pending["cat"],
+                "fiber_key": pending["fiber_key"],
+                "kc_no": pending["kc_no"],
+                "cert_date": pending["cert_date"],
+                "expiry_date": pending["expiry_date"],
+                "memo": pending["memo"],
+                "updated_at": now2,
+                "updated_by": user2,
+            }
+
+            rep_work = pd.concat([rep_work, pd.DataFrame([new_row])], ignore_index=True)
+            save_df_and_commit("rep", rep_work, commit_msg=f"add rep_model {rep_id}")
+            log("REP_ADD", user2, f"{rep_id} style={pending['rep_style_no']} {pending['hub']}/{pending['cat']}/{pending['fiber_key']} KC={pending['kc_no']}")
+            st.success("✅ (중복 확인 후) 등록 완료")
+
+        st.session_state["rep_pending_save"] = None
+        st.rerun()
 
 # -----------------------------
 # 삭제 (관리자)
@@ -289,14 +371,13 @@ else:
             st.error("삭제 확인 입력란에 DELETE를 입력하세요.")
             st.stop()
 
-        # 동일모델 연결도 삭제(해제)
         if cascade and not style.empty:
             style = style[style["rep_id"] != del_rep_id].copy()
             save_df_and_commit("style", style, commit_msg=f"delete style links of {del_rep_id}")
 
-        # 대표모델 삭제
-        rep = rep[rep["rep_id"] != del_rep_id].copy()
-        save_df_and_commit("rep", rep, commit_msg=f"delete rep_model {del_rep_id}")
+        rep_after = rep.copy()
+        rep_after = rep_after[rep_after["rep_id"] != del_rep_id].copy()
+        save_df_and_commit("rep", rep_after, commit_msg=f"delete rep_model {del_rep_id}")
 
         st.success("✅ 삭제 완료")
         st.rerun()
