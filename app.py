@@ -22,7 +22,7 @@ if "repo_synced" not in st.session_state:
 # 사이드바(사용자/관리자 모드)
 sidebar_user_controls()
 
-st.markdown("## ✅ 조건 검색 (앱 시작 화면)")
+st.markdown("## ✅ 조건 검색 ")
 
 rep = load_df("rep")
 style_map = load_df("style")
