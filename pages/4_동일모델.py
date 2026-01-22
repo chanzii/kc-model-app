@@ -196,3 +196,39 @@ if dup:
         # 세션 정리
         st.session_state["dup_items"] = []
         st.session_state["pending_style_df"] = style_df
+
+# ----------------------------
+# 동일모델(STYLENO) 삭제/해제 (관리자)
+# ----------------------------
+st.markdown("---")
+st.subheader("🗑️ 동일모델(STYLENO) 삭제/해제 (관리자)")
+
+if st.session_state.get("is_admin") is not True:
+    st.info("관리자 모드에서만 삭제/해제가 가능합니다.")
+else:
+    style_df = load_df("style")
+    if style_df.empty:
+        st.info("동일모델 데이터가 없습니다.")
+    else:
+        raw_del = st.text_area("삭제/해제할 STYLENO 입력(여러 개 가능)", height=120, placeholder="ABC12345\nABC12346")
+        confirm2 = st.text_input("삭제 확인 입력", placeholder="DELETE", key="del_style_confirm")
+
+        if st.button("STYLENO 삭제/해제 실행", type="primary"):
+            if confirm2.strip().upper() != "DELETE":
+                st.error("삭제 확인 입력란에 DELETE를 입력하세요.")
+                st.stop()
+
+            tokens = []
+            for part in raw_del.replace(",", "\n").split("\n"):
+                t = part.strip()
+                if t:
+                    tokens.append(t)
+            tokens = list(dict.fromkeys(tokens))
+
+            before = len(style_df)
+            style_df = style_df[~style_df["style_no"].isin(tokens)].copy()
+            after = len(style_df)
+
+            save_df_and_commit("style", style_df, commit_msg=f"delete styles {len(tokens)}")
+            st.success(f"✅ 삭제 완료: {before-after}건 제거")
+            st.rerun()
