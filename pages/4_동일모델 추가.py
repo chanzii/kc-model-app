@@ -37,7 +37,10 @@ def label_for_rep_id(rep_id: str) -> str:
     # ✅ RM0001 같은 rep_id는 화면에 안 보이게 하고,
     # ✅ 대표스타일 | 생산처 | 분류 | 조성 | KC만 보여줌
     return f"{rep_style} | {hub} | {cat} | {fiber} | {kc}"
-
+# ✅ 동일모델 추가/연결은 관리자만
+if st.session_state.get("is_admin") is not True:
+    st.warning("🔒 동일모델 추가/연결은 관리자만 가능합니다. 사이드바에서 관리자 모드를 켜주세요.")
+    st.stop()
 st.markdown("### 연결할 대표모델 선택")
 
 rep_ids = rep["rep_id"].tolist()
