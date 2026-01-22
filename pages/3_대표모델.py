@@ -12,13 +12,14 @@ hubs = load_df("hubs")
 cats = load_df("cats")
 fibers = load_df("fibers")
 
-# 안전장치: 컬럼 없으면 추가 (기존 데이터 호환)
+# (호환) rep_style_no 없으면 추가
 if not rep.empty and "rep_style_no" not in rep.columns:
     rep["rep_style_no"] = ""
 
 # 활성 마스터만
 active_hubs = hubs[hubs.get("active", "").str.upper() == "TRUE"]["hub"].tolist() if not hubs.empty else []
 active_cats = cats[cats.get("active", "").str.upper() == "TRUE"]["category"].tolist() if not cats.empty else []
+
 active_fibers_df = fibers[fibers.get("active", "").str.upper() == "TRUE"] if not fibers.empty else pd.DataFrame(columns=["fiber", "sort_order"])
 active_fibers = active_fibers_df["fiber"].tolist()
 
@@ -32,7 +33,7 @@ if not active_fibers_df.empty:
             fiber_order[r["fiber"]] = 9999
 
 # -----------------------------
-# 대표모델 목록
+# 대표모델 목록 (한글 컬럼/순서)
 # -----------------------------
 st.subheader("대표모델 목록")
 
@@ -41,14 +42,14 @@ if rep.empty:
 else:
     view = rep.copy()
 
-    # 잔여기간(상태) 계산
+    # 잔여기간 계산
     status_list = []
     for _, r in view.iterrows():
         icon, msg = expiry_status(r.get("expiry_date", ""))
         status_list.append(f"{icon} {msg}")
     view["잔여기간"] = status_list
 
-    # 화면용 컬럼명 한글로 변경
+    # 화면용 컬럼명 변환
     view_display = view.rename(columns={
         "rep_style_no": "스타일",
         "hub": "생산처",
@@ -70,8 +71,13 @@ else:
         "인증번호",
         "신고일",
         "만료일",
-        "잔여기간
+        "잔여기간",
+        "등록",
+        "등록일",
+    ]
+    display_cols = [c for c in display_cols if c in view_display.columns]
 
+    st.dataframe(view_display[display_cols], use_container_width=True)
 
 st.markdown("---")
 
@@ -90,7 +96,6 @@ if not active_hubs or not active_cats or not active_fibers:
 
 mode = st.radio("모드", ["새로 등록", "기존 수정"], horizontal=True)
 
-# 기본값
 default = {
     "hub": active_hubs[0],
     "cat": active_cats[0],
@@ -104,7 +109,6 @@ default = {
 
 edit_rep_id = None
 
-# 기존 수정이면 대상 선택 + 기본값 채우기
 if mode == "기존 수정":
     if rep.empty:
         st.info("수정할 대표모델이 없습니다.")
@@ -136,10 +140,10 @@ with st.form("rep_form"):
     col1, col2, col3 = st.columns(3)
     with col1:
         hub_index = active_hubs.index(default["hub"]) if default["hub"] in active_hubs else 0
-        hub = st.selectbox("생산거점", options=active_hubs, index=hub_index)
+        hub = st.selectbox("생산처", options=active_hubs, index=hub_index)
     with col2:
         cat_index = active_cats.index(default["cat"]) if default["cat"] in active_cats else 0
-        cat = st.selectbox("품목군", options=active_cats, index=cat_index)
+        cat = st.selectbox("분류", options=active_cats, index=cat_index)
     with col3:
         selected = st.multiselect(
             "조성섬유(정확히 일치)",
@@ -147,16 +151,11 @@ with st.form("rep_form"):
             default=[f for f in default["fibers"] if f in active_fibers]
         )
 
-    rep_style_no = st.text_input(
-        "대표 스타일번호(기준 STYLENO)",
-        value=default.get("rep_style_no", ""),
-        placeholder="예: ABC12345"
-    )
-
-    kc_no = st.text_input("KC 안전확인번호", value=default["kc_no"], placeholder="예: KC-XXXX-XXXX")
-    cert_date = st.text_input("인증일 (YYYY-MM-DD)", value=default["cert_date"], placeholder="예: 2024-06-01")
-    expiry_date = st.text_input("유효기간 (YYYY-MM-DD)", value=default["expiry_date"], placeholder="예: 2026-05-30")
-    memo = st.text_area("메모", value=default["memo"], height=80)
+    rep_style_no = st.text_input("스타일(대표)", value=default.get("rep_style_no", ""), placeholder="예: ABC12345")
+    kc_no = st.text_input("인증번호", value=default["kc_no"], placeholder="예: KC-XXXX-XXXX")
+    cert_date = st.text_input("신고일 (YYYY-MM-DD)", value=default["cert_date"], placeholder="예: 2024-06-01")
+    expiry_date = st.text_input("만료일 (YYYY-MM-DD)", value=default["expiry_date"], placeholder="예: 2026-05-30")
+    memo = st.text_area("등록", value=default["memo"], height=80)
 
     submitted = st.form_submit_button("저장", type="primary")
 
@@ -176,12 +175,12 @@ if submitted:
             "kc_no", "cert_date", "expiry_date", "memo", "updated_at", "updated_by"
         ])
 
-    # (중복 방지) 동일 조건이 다른 rep_id로 이미 있으면 막기
+    # 중복 방지
     conflict = rep[(rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == fiber_key)]
     if mode == "기존 수정" and edit_rep_id:
         conflict = conflict[conflict["rep_id"] != edit_rep_id]
     if not conflict.empty:
-        st.error("❌ 같은 조건(생산거점+품목군+조성) 대표모델이 이미 존재합니다. (중복 불가)")
+        st.error("❌ 같은 조건(생산처+분류+조성) 대표모델이 이미 존재합니다. (중복 불가)")
         st.stop()
 
     if mode == "기존 수정" and edit_rep_id:
@@ -199,14 +198,13 @@ if submitted:
         rep.at[idx, "updated_by"] = user
 
         save_df_and_commit("rep", rep, commit_msg=f"update rep_model {edit_rep_id}")
-        log("REP_UPDATE", user, f"{edit_rep_id} rep_style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
-        st.success(f"✅ 수정 완료: {edit_rep_id}")
+        log("REP_UPDATE", user, f"{edit_rep_id} style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
+        st.success("✅ 수정 완료")
 
     else:
         # 새 rep_id 생성
-        existing = rep["rep_id"].tolist()
         nums = []
-        for rid in existing:
+        for rid in rep["rep_id"].tolist():
             if isinstance(rid, str) and rid.startswith("RM"):
                 try:
                     nums.append(int(rid[2:]))
@@ -231,5 +229,5 @@ if submitted:
 
         rep = pd.concat([rep, pd.DataFrame([new_row])], ignore_index=True)
         save_df_and_commit("rep", rep, commit_msg=f"add rep_model {rep_id}")
-        log("REP_ADD", user, f"{rep_id} rep_style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
-        st.success(f"✅ 등록 완료: {rep_id}")
+        log("REP_ADD", user, f"{rep_id} style={rep_style_no.strip()} {hub}/{cat}/{fiber_key} KC={kc_no}")
+        st.success("✅ 등록 완료")
