@@ -6,3 +6,4 @@ timestamp,user,action,detail
 2026-01-22 06:32:12,unknown,REP_ADD,RM0002 style=MYSOP01 필리핀 본공장/중의류/면|폴리에스터|레이온|폴리우레탄 KC=CB014R2487-6007
 2026-01-22 06:45:18,unknown,REP_ADD,RM0003 style=MYSOP02 필리핀 본공장/중의류/면|나일론 KC=CB014R2487-6002
 2026-01-22 06:46:49,unknown,REP_ADD,RM0004 style=MYSSE04 필리핀 본공장/중의류/면|레이온|폴리우레탄 KC=CB014R2487-6001
+2026-01-22 06:47:22,unknown,MASTER_ADD_HUB,광저우지사
