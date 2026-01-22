@@ -175,13 +175,22 @@ if submitted:
             "kc_no", "cert_date", "expiry_date", "memo", "updated_at", "updated_by"
         ])
 
-    # 중복 방지
+      # ✅ 동일 조건(생산처+분류+조성) 중복 체크: 체크박스 확인 후 등록
     conflict = rep[(rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == fiber_key)]
     if mode == "기존 수정" and edit_rep_id:
         conflict = conflict[conflict["rep_id"] != edit_rep_id]
+
     if not conflict.empty:
-        st.error("❌ 같은 조건(생산처+분류+조성) 대표모델이 이미 존재합니다. (중복 불가)")
-        st.stop()
+        st.warning("⚠️ 동일한 [생산처 + 분류 + 조성섬유] 조합의 대표모델이 이미 존재합니다.")
+        # 기존 항목 보여주기
+        show_cols = [c for c in ["rep_style_no", "kc_no", "cert_date", "expiry_date", "updated_at", "rep_id"] if c in conflict.columns]
+        st.dataframe(conflict[show_cols], use_container_width=True)
+
+        agree = st.checkbox("위 내용을 확인했고, 중복임을 인지한 상태로 등록을 진행합니다.")
+        if not agree:
+            st.info("중복 조합이므로, 체크 후에만 저장할 수 있습니다.")
+            st.stop()
+
 
     if mode == "기존 수정" and edit_rep_id:
         idx = rep[rep["rep_id"] == edit_rep_id].index[0]
