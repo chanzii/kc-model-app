@@ -43,6 +43,62 @@ def make_korean_table_from_rep(df: pd.DataFrame) -> pd.DataFrame:
     display_cols = [c for c in display_cols if c in df_display.columns]
     return df_display[display_cols]
 
+def show_linked_styles_for_rep(rep_df: pd.DataFrame, title: str = "🔗 선택한 대표모델에 연결된 동일모델(STYLENO)"):
+    """
+    rep_df: rep_id를 포함한 대표모델 데이터프레임(필터된 결과여도 OK)
+    """
+    style_map = load_df("style")
+    if style_map.empty:
+        st.info("동일모델(STYLENO) 연결 데이터가 없습니다.")
+        return
+
+    if rep_df is None or rep_df.empty:
+        return
+
+    if "rep_id" not in rep_df.columns:
+        st.warning("rep_id 컬럼이 없어 동일모델 연결 조회를 할 수 없습니다.")
+        return
+
+    rep_df = rep_df.copy()
+
+    rep_lookup = {r["rep_id"]: r for _, r in rep_df.iterrows()}
+
+    def rep_label(rid: str) -> str:
+        r = rep_lookup.get(rid, {})
+        rep_style = (r.get("rep_style_no") or "").strip() or "(대표스타일없음)"
+        hub = (r.get("hub") or "").strip()
+        cat = (r.get("category") or "").strip()
+        fiber = (r.get("fiber_key") or "").strip()
+        kc = (r.get("kc_no") or "").strip() or "(KC없음)"
+        return f"{rep_style} | {hub} | {cat} | {fiber} | {kc}"
+
+    st.markdown(f"### {title}")
+
+    rid = st.selectbox(
+        "대표모델 선택",
+        options=rep_df["rep_id"].tolist(),
+        format_func=rep_label,
+        key="rep_link_view_selectbox"
+    )
+
+    linked = style_map[style_map["rep_id"] == rid].copy()
+    if "style_no" in linked.columns:
+        linked["style_no"] = linked["style_no"].astype(str)
+        linked = linked.sort_values("style_no")
+
+    st.write(f"연결된 동일모델: **{len(linked)}개**")
+
+    if linked.empty:
+        st.info("연결된 동일모델이 없습니다.")
+        return
+
+    # 표 + 복사용 텍스트
+    if "style_no" in linked.columns:
+        st.dataframe(linked[["style_no"]].rename(columns={"style_no": "STYLENO"}), use_container_width=True)
+        st.text_area("복사용(STYLENO 줄바꿈)", "\n".join(linked["style_no"].tolist()), height=140, key="rep_link_view_copy")
+    else:
+        st.dataframe(linked, use_container_width=True)
+
 q = st.text_input("검색어", placeholder="예: ABC / ABC12 / 123 등")
 mode = st.radio("검색 방식", options=["앞에서 일치(prefix)", "포함(contains)"], horizontal=True)
 min_len = 2
@@ -93,6 +149,8 @@ if rep_hit.empty:
     st.info("대표모델에서 일치하는 스타일이 없습니다.")
 else:
     st.dataframe(make_korean_table_from_rep(rep_hit), use_container_width=True)
+    # ✅ 대표모델 클릭 대신: 선택 → 연결된 동일모델 목록 보기
+    show_linked_styles_for_rep(rep_hit)
 
 st.markdown("---")
 
@@ -120,3 +178,9 @@ else:
         out_kor = out_kor.head(200)
 
     st.dataframe(out_kor, use_container_width=True)
+
+    # ✅ 동일모델 결과가 있어도, 거기서 대표모델들 뽑아서 연결된 동일모델 전체 보기 가능
+    if "rep_id" in style_hit_joined.columns:
+        rep_from_join = style_hit_joined.drop_duplicates(subset=["rep_id"]).copy()
+        # rep_from_join에는 rep_style_no 등이 이미 있음
+        show_linked_styles_for_rep(rep_from_join, title="🔗 (동일모델 결과에서) 대표모델 선택 → 연결된 동일모델 전체 보기")
