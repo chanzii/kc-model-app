@@ -77,7 +77,7 @@ if not style.empty:
 
     if not hit_style.empty and not rep.empty:
         style_hit_joined = hit_style.merge(
-            rep[["rep_id","rep_style_no","hub","category","fiber_key","kc_no","cert_date","expiry_date","memo","updated_at"]],
+            rep[["rep_id", "rep_style_no", "hub", "category", "fiber_key", "kc_no", "cert_date", "expiry_date", "memo", "updated_at"]],
             on="rep_id",
             how="left"
         )
@@ -100,17 +100,19 @@ st.subheader("동일모델(STYLENO) 결과")
 if style_hit_joined.empty:
     st.info("동일모델(STYLENO)에서 결과가 없습니다.")
 else:
-    # 화면에 검색스타일도 함께 보여주기 위해 앞에 붙이기
     df = style_hit_joined.copy()
 
     # 잔여기간 계산 + 한글 컬럼 변환(대표모델 표 재사용)
     df_rep_like = df.rename(columns={"검색스타일": "rep_style_no"})  # 임시로 '스타일' 칼럼 자리에 넣기
     out_kor = make_korean_table_from_rep(df_rep_like)
 
-    # 첫 컬럼명을 다시 '검색스타일'로 교정
+    # ✅ 헤더 교정: 1열=검색스타일, 2열(원래 스타일)=대표스타일
     if not out_kor.empty:
         cols = out_kor.columns.tolist()
-        cols[0] = "검색스타일"
+        if len(cols) >= 1:
+            cols[0] = "검색스타일"
+        if len(cols) >= 2 and cols[1] == "스타일":
+            cols[1] = "대표스타일"
         out_kor.columns = cols
 
     if len(out_kor) > 200:
