@@ -14,3 +14,4 @@ timestamp,user,action,detail
 2026-01-22 08:10:57,unknown,REP_ADD,RM0007 style=MYSLE01 필리핀 본공장/중의류/면|폴리에스터|폴리우레탄 KC=CB014R2487-6006
 2026-01-22 08:11:24,unknown,REP_UPDATE,RM0007 style=MYSLE01 필리핀 본공장/중의류/면|폴리에스터|폴리우레탄 KC=CB014R2487-6005
 2026-01-22 08:12:21,unknown,REP_ADD,RM0008 style=MYSOU04 필리핀 본공장/외의류/폴리에스터 KC=CB014R2487-6004
+2026-01-22 08:23:19,unknown,MASTER_ADD_CATEGORY,내의류
