@@ -1,0 +1,144 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+from lib.data_io import load_df, save_df_and_commit
+from lib.rules import normalize_fiber_key, expiry_status
+from lib.audit import log
+
+st.title("📑 대표모델")
+
+rep = load_df("rep")
+hubs = load_df("hubs")
+cats = load_df("cats")
+fibers = load_df("fibers")
+
+# 활성 마스터만
+active_hubs = hubs[hubs.get("active","").str.upper() == "TRUE"]["hub"].tolist() if not hubs.empty else []
+active_cats = cats[cats.get("active","").str.upper() == "TRUE"]["category"].tolist() if not cats.empty else []
+
+active_fibers_df = fibers[fibers.get("active","").str.upper() == "TRUE"] if not fibers.empty else pd.DataFrame(columns=["fiber","sort_order"])
+active_fibers = active_fibers_df["fiber"].tolist()
+
+# 섬유 정렬 맵
+fiber_order = {}
+if not active_fibers_df.empty:
+    for _, r in active_fibers_df.iterrows():
+        try:
+            fiber_order[r["fiber"]] = int(r.get("sort_order", "9999") or 9999)
+        except Exception:
+            fiber_order[r["fiber"]] = 9999
+
+# -----------------------------
+# 대표모델 목록
+# -----------------------------
+st.subheader("대표모델 목록")
+
+if rep.empty:
+    st.info("대표모델 데이터가 없습니다.")
+else:
+    view = rep.copy()
+    badges = []
+    for _, r in view.iterrows():
+        icon, msg = expiry_status(r.get("expiry_date",""))
+        badges.append(f"{icon} {msg}")
+    view["status"] = badges
+
+    st.dataframe(
+        view[["rep_id","hub","category","fiber_key","kc_no","cert_date","expiry_date","status","memo","updated_by","updated_at"]],
+        use_container_width=True
+    )
+
+st.markdown("---")
+
+# -----------------------------
+# 등록/수정 (관리자)
+# -----------------------------
+st.subheader("대표모델 등록/수정 (관리자)")
+
+if st.session_state.get("is_admin") is not True:
+    st.warning("관리자 모드에서만 등록/수정이 가능합니다. (사이드바에서 관리자 모드 ON)")
+    st.stop()
+
+if not active_hubs or not active_cats or not active_fibers:
+    st.error("마스터(생산거점/품목군/조성섬유)를 먼저 등록하세요. (마스터관리 페이지)")
+    st.stop()
+
+with st.form("rep_form"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        hub = st.selectbox("생산거점", options=active_hubs)
+    with col2:
+        cat = st.selectbox("품목군", options=active_cats)
+    with col3:
+        selected = st.multiselect("조성섬유(정확히 일치)", options=active_fibers)
+
+    kc_no = st.text_input("KC 안전확인번호", placeholder="예: KC-XXXX-XXXX")
+    cert_date = st.text_input("인증일 (YYYY-MM-DD)", placeholder="예: 2024-06-01")
+    expiry_date = st.text_input("유효기간 (YYYY-MM-DD)", placeholder="예: 2026-05-30")
+    memo = st.text_area("메모", height=80)
+
+    submitted = st.form_submit_button("저장", type="primary")
+
+if submitted:
+    user = st.session_state.get("user_name","unknown")
+
+    if not selected:
+        st.error("조성섬유를 선택하세요.")
+        st.stop()
+
+    fiber_key = normalize_fiber_key(selected, fiber_order)
+
+    if rep.empty:
+        rep = pd.DataFrame(columns=[
+            "rep_id","hub","category","fiber_key","kc_no","cert_date","expiry_date","memo","updated_at","updated_by"
+        ])
+
+    # 동일 조건이 있으면 업데이트
+    cond = (rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == fiber_key)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if cond.any():
+        idx = rep[cond].index[0]
+        rep_id = rep.at[idx, "rep_id"]
+
+        rep.at[idx, "kc_no"] = kc_no
+        rep.at[idx, "cert_date"] = cert_date
+        rep.at[idx, "expiry_date"] = expiry_date
+        rep.at[idx, "memo"] = memo
+        rep.at[idx, "updated_at"] = now
+        rep.at[idx, "updated_by"] = user
+
+        save_df_and_commit("rep", rep, commit_msg=f"update rep_model {rep_id}")
+        log("REP_UPDATE", user, f"{rep_id} {hub}/{cat}/{fiber_key} KC={kc_no}")
+        st.success(f"✅ 업데이트 완료: {rep_id}")
+
+    else:
+        # 새 rep_id 생성 (RM0001 형태)
+        existing = rep["rep_id"].tolist()
+        nums = []
+        for rid in existing:
+            if isinstance(rid, str) and rid.startswith("RM"):
+                try:
+                    nums.append(int(rid[2:]))
+                except Exception:
+                    pass
+        nxt = (max(nums) + 1) if nums else 1
+        rep_id = f"RM{nxt:04d}"
+
+        new_row = {
+            "rep_id": rep_id,
+            "hub": hub,
+            "category": cat,
+            "fiber_key": fiber_key,
+            "kc_no": kc_no,
+            "cert_date": cert_date,
+            "expiry_date": expiry_date,
+            "memo": memo,
+            "updated_at": now,
+            "updated_by": user,
+        }
+
+        rep = pd.concat([rep, pd.DataFrame([new_row])], ignore_index=True)
+        save_df_and_commit("rep", rep, commit_msg=f"add rep_model {rep_id}")
+        log("REP_ADD", user, f"{rep_id} {hub}/{cat}/{fiber_key} KC={kc_no}")
+        st.success(f"✅ 등록 완료: {rep_id}")
