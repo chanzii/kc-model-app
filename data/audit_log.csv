@@ -18,3 +18,4 @@ timestamp,user,action,detail
 2026-01-22 08:23:38,unknown,MASTER_ADD_HUB,한국-양말
 2026-01-22 08:43:51,unknown,REP_UPDATE,RM0002 style=MYSOP01 필리핀 본공장/중의류/면|폴리에스터|레이온|폴리우레탄 KC=CB014R2487-6007
 2026-01-22 08:44:07,unknown,REP_UPDATE,RM0002 style=MYSOP01 필리핀 본공장/중의류/면|폴리에스터|레이온|폴리우레탄 KC=CB014R2487-6007
+2026-01-22 08:57:51,unknown,REP_ADD,RM0007 style=MYSOU04 필리핀 본공장/외의류/폴리에스터 KC=CB014R2487-6004
