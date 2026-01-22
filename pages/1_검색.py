@@ -179,8 +179,4 @@ else:
 
     st.dataframe(out_kor, use_container_width=True)
 
-    # ✅ 동일모델 결과가 있어도, 거기서 대표모델들 뽑아서 연결된 동일모델 전체 보기 가능
-    if "rep_id" in style_hit_joined.columns:
-        rep_from_join = style_hit_joined.drop_duplicates(subset=["rep_id"]).copy()
-        # rep_from_join에는 rep_style_no 등이 이미 있음
-        show_linked_styles_for_rep(rep_from_join, title="🔗 (동일모델 결과에서) 대표모델 선택 → 연결된 동일모델 전체 보기")
+  
