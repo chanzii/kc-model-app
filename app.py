@@ -1,8 +1,9 @@
 import streamlit as st
-from lib.github_sync import sync_repo_or_pull
 from lib.session import sidebar_user_controls
-import streamlit as st
 from lib.github_sync import sync_repo_cache
+
+st.set_page_config(page_title="KC 대표/동일모델 관리", layout="wide")
+st.title("KC 대표/동일모델 관리")
 
 # ✅ 앱 부팅 시 1회: GitHub -> repo_cache 최신화
 if "repo_synced" not in st.session_state:
@@ -14,11 +15,6 @@ if "repo_synced" not in st.session_state:
     st.session_state["repo_synced"] = True
     if not ok:
         st.warning("⚠️ GitHub 동기화에 실패했습니다. (네트워크/토큰/레포 설정 확인)")
-st.set_page_config(page_title="KC 대표/동일모델 관리", layout="wide")
-st.title("KC 대표/동일모델 관리")
-
-# GitHub repo 동기화
-sync_repo_or_pull()
 
 # 사이드바(사용자/관리자 모드)
 sidebar_user_controls()
