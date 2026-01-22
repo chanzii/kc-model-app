@@ -2,3 +2,4 @@ timestamp,user,action,detail
 2026-01-22 06:28:34,unknown,MASTER_ADD_FIBER,폴리우레탄 order=50
 2026-01-22 06:29:03,unknown,REP_ADD,RM0001 style=MYSOP04 필리핀 본공장/중의류/면 KC=CB0000-0000
 2026-01-22 06:29:15,unknown,STYLE_LINK,target=RM0001 count=1
+2026-01-22 06:31:34,unknown,MASTER_ADD_FIBER,레이온 order=50
