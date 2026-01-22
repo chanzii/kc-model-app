@@ -3,7 +3,7 @@ from pathlib import Path
 
 REPO_LOCAL = Path("repo_cache")
 
-def sync_repo_or_pull(gh_token: str, gh_repo: str, gh_branch: str = "main") -> bool:
+def sync_repo_cache(gh_token: str, gh_repo: str, gh_branch: str = "main") -> bool:
     """
     GitHub 저장소를 repo_cache로 clone/pull 해서 최신 상태로 맞춥니다.
     """
