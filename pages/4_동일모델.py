@@ -9,16 +9,45 @@ st.title("🔗 동일모델(STYLENO) 연결")
 rep = load_df("rep")
 style = load_df("style")
 
+# 호환: rep_style_no 없으면 추가
+if not rep.empty and "rep_style_no" not in rep.columns:
+    rep["rep_style_no"] = ""
+
 if rep.empty:
     st.info("대표모델이 없습니다. 먼저 대표모델을 등록하세요.")
     st.stop()
 
-# 대표모델 선택 라벨 만들기
+# rep_id -> row lookup
 rep = rep.copy()
-rep["label"] = rep["rep_id"] + " | " + rep["hub"] + " | " + rep["category"] + " | " + rep["fiber_key"]
+rep_lookup = {r["rep_id"]: r for _, r in rep.iterrows()}
 
-selected_label = st.selectbox("연결할 대표모델 선택", options=rep["label"].tolist())
-target_rep_id = selected_label.split(" | ")[0].strip()
+def label_for_rep_id(rep_id: str) -> str:
+    r = rep_lookup.get(rep_id, {})
+    rep_style = (r.get("rep_style_no") or "").strip()
+    hub = (r.get("hub") or "").strip()
+    cat = (r.get("category") or "").strip()
+    fiber = (r.get("fiber_key") or "").strip()
+    kc = (r.get("kc_no") or "").strip()
+
+    if not rep_style:
+        rep_style = "(대표스타일없음)"
+    if not kc:
+        kc = "(KC없음)"
+
+    # ✅ RM0001 같은 rep_id는 화면에 안 보이게 하고,
+    # ✅ 대표스타일 | 생산처 | 분류 | 조성 | KC만 보여줌
+    return f"{rep_style} | {hub} | {cat} | {fiber} | {kc}"
+
+st.markdown("### 연결할 대표모델 선택")
+
+rep_ids = rep["rep_id"].tolist()
+
+# ✅ 옵션은 rep_id로 갖고, 화면 표시만 label로 바꿈 (파싱 필요 없음)
+target_rep_id = st.selectbox(
+    "대표모델",
+    options=rep_ids,
+    format_func=label_for_rep_id
+)
 
 st.markdown("### STYLENO 여러 개 붙여넣기")
 st.caption("줄바꿈 또는 쉼표로 구분 가능. 예: ABC12345, ABC12346 ...")
@@ -34,7 +63,7 @@ if "target_rep_id" not in st.session_state:
     st.session_state["target_rep_id"] = ""
 
 if st.button("추가/연결", type="primary"):
-    user = st.session_state.get("user_name","unknown")
+    user = st.session_state.get("user_name", "unknown")
 
     if not raw.strip():
         st.warning("입력값이 없습니다.")
@@ -46,12 +75,13 @@ if st.button("추가/연결", type="primary"):
         t = part.strip()
         if t:
             tokens.append(t)
+
     # 입력 내부 중복 제거
     tokens = list(dict.fromkeys(tokens))
 
     # style_map 초기화
     if style.empty:
-        style = pd.DataFrame(columns=["style_no","rep_id","linked_at","linked_by","memo"])
+        style = pd.DataFrame(columns=["style_no", "rep_id", "linked_at", "linked_by", "memo"])
 
     # 현재 매핑 dict
     existing = {r["style_no"]: r for _, r in style.iterrows()}
@@ -60,7 +90,7 @@ if st.button("추가/연결", type="primary"):
     dup = []  # (style_no, current_rep_id)
 
     for s in tokens:
-        if s in existing and existing[s].get("rep_id","") and existing[s]["rep_id"] != target_rep_id:
+        if s in existing and existing[s].get("rep_id", "") and existing[s]["rep_id"] != target_rep_id:
             dup.append((s, existing[s]["rep_id"]))
         else:
             new_ok.append(s)
@@ -72,7 +102,7 @@ if st.button("추가/연결", type="primary"):
     for s in new_ok:
         if s in existing:
             # 이미 같은 rep에 연결된 경우는 패스
-            if existing[s].get("rep_id","") == target_rep_id:
+            if existing[s].get("rep_id", "") == target_rep_id:
                 continue
             idx = style[style["style_no"] == s].index[0]
             style.at[idx, "rep_id"] = target_rep_id
@@ -108,20 +138,21 @@ if dup:
     st.markdown("---")
     st.subheader("⚠️ 중복 STYLENO 처리 (스킵 / 이동)")
 
-    rep_lookup = {r["rep_id"]: r for _, r in rep.iterrows()}
     style_df = st.session_state.get("pending_style_df", style)
     target_rep_id = st.session_state.get("target_rep_id", "")
 
     decisions = {}
     for s, cur_rep_id in dup:
         cur = rep_lookup.get(cur_rep_id, {})
+        cur_style = cur.get("rep_style_no", "")
+        cur_kc = cur.get("kc_no", "")
         st.markdown(
             f"**{s}**  \n"
-            f"- 현재 연결: `{cur_rep_id}` ({cur.get('hub','')} / {cur.get('category','')} / {cur.get('fiber_key','')})"
+            f"- 현재 연결: **{cur_style}** | {cur.get('hub','')} | {cur.get('category','')} | {cur.get('fiber_key','')} | **{cur_kc}**"
         )
         decisions[s] = st.radio(
             f"{s} 처리",
-            options=["그대로 두기(스킵)", "현재 대표모델로 이동(재연결)"],
+            options=["그대로 두기(스킵)", "현재 선택한 대표모델로 이동(재연결)"],
             key=f"dec_{s}",
             horizontal=True
         )
@@ -130,10 +161,10 @@ if dup:
     confirm = st.text_input("확인 입력", placeholder="MOVE")
 
     if st.button("중복 처리 적용"):
-        user = st.session_state.get("user_name","unknown")
+        user = st.session_state.get("user_name", "unknown")
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        any_move = any(v.startswith("현재 대표모델로 이동") for v in decisions.values())
+        any_move = any(v.startswith("현재 선택한 대표모델로 이동") for v in decisions.values())
         if any_move and confirm.strip().upper() != "MOVE":
             st.error("이동(재연결)이 포함되어 있습니다. 확인 입력란에 MOVE를 입력하세요.")
             st.stop()
