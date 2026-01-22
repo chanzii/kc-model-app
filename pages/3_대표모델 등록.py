@@ -175,21 +175,34 @@ if submitted:
             "kc_no", "cert_date", "expiry_date", "memo", "updated_at", "updated_by"
         ])
 
-      # ✅ 동일 조건(생산처+분류+조성) 중복 체크: 체크박스 확인 후 등록
+     # ✅ 동일 조건(생산처+분류+조성) 중복 체크: 2단계 저장(체크 + 버튼)
     conflict = rep[(rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == fiber_key)]
     if mode == "기존 수정" and edit_rep_id:
         conflict = conflict[conflict["rep_id"] != edit_rep_id]
 
     if not conflict.empty:
+        # 1) 저장할 내용 임시 보관(세션)
+        st.session_state["rep_pending_save"] = {
+            "mode": mode,
+            "edit_rep_id": edit_rep_id,
+            "rep_style_no": rep_style_no.strip(),
+            "hub": hub,
+            "cat": cat,
+            "fiber_key": fiber_key,
+            "kc_no": kc_no,
+            "cert_date": cert_date,
+            "expiry_date": expiry_date,
+            "memo": memo,
+            "now": now,
+            "user": user,
+        }
+
         st.warning("⚠️ 동일한 [생산처 + 분류 + 조성섬유] 조합의 대표모델이 이미 존재합니다.")
-        # 기존 항목 보여주기
         show_cols = [c for c in ["rep_style_no", "kc_no", "cert_date", "expiry_date", "updated_at", "rep_id"] if c in conflict.columns]
         st.dataframe(conflict[show_cols], use_container_width=True)
 
-        agree = st.checkbox("위 내용을 확인했고, 중복임을 인지한 상태로 등록을 진행합니다.")
-        if not agree:
-            st.info("중복 조합이므로, 체크 후에만 저장할 수 있습니다.")
-            st.stop()
+        st.info("아래에서 체크 후 ‘그래도 저장’ 버튼을 눌러야 저장됩니다.")
+        st.stop()
 
 
     if mode == "기존 수정" and edit_rep_id:
