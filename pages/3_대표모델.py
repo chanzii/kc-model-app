@@ -44,7 +44,7 @@ else:
     view["status"] = badges
 
     st.dataframe(
-        view[["rep_id","hub","category","fiber_key","kc_no","cert_date","expiry_date","status","memo","updated_by","updated_at"]],
+        view[["rep_style_no","hub","category","fiber_key","kc_no","cert_date","expiry_date","status","memo","updated_by","updated_at"]],
         use_container_width=True
     )
 
@@ -70,6 +70,7 @@ default = {
     "hub": active_hubs[0],
     "cat": active_cats[0],
     "fibers": [],
+    "rep_style_no": ""
     "kc_no": "",
     "cert_date": "",
     "expiry_date": "",
@@ -93,6 +94,7 @@ if mode == "기존 수정":
     default["kc_no"] = row.get("kc_no","")
     default["cert_date"] = row.get("cert_date","")
     default["expiry_date"] = row.get("expiry_date","")
+    default["rep_style_no"] = row.get("rep_style_no","")
     default["memo"] = row.get("memo","")
 
 with st.form("rep_form"):
@@ -104,7 +106,9 @@ with st.form("rep_form"):
     with col3:
         selected = st.multiselect("조성섬유(정확히 일치)", options=active_fibers, default=[f for f in default["fibers"] if f in active_fibers])
 
-    kc_no = st.text_input("KC 안전확인번호", value=default["kc_no"], placeholder="예: KC-XXXX-XXXX")
+rep_style_no = st.text_input("대표 스타일번호(기준 STYLENO)", value=default.get("rep_style_no",""), placeholder="예: ABC12345")
+
+kc_no = st.text_input("KC 안전확인번호", value=default["kc_no"], placeholder="예: KC-XXXX-XXXX")
     cert_date = st.text_input("인증일 (YYYY-MM-DD)", value=default["cert_date"], placeholder="예: 2024-06-01")
     expiry_date = st.text_input("유효기간 (YYYY-MM-DD)", value=default["expiry_date"], placeholder="예: 2026-05-30")
     memo = st.text_area("메모", value=default["memo"], height=80)
@@ -122,7 +126,7 @@ if submitted:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if rep.empty:
-        rep = pd.DataFrame(columns=["rep_id","hub","category","fiber_key","kc_no","cert_date","expiry_date","memo","updated_at","updated_by"])
+        rep = pd.DataFrame(columns=["rep_id","rep_style_no","hub","category","fiber_key","kc_no","cert_date","expiry_date","memo","updated_at","updated_by"])
 
     # (중요) 동일 조건 유니크 체크: 다른 rep_id가 이미 같은 조합이면 막기
     conflict = rep[(rep["hub"] == hub) & (rep["category"] == cat) & (rep["fiber_key"] == fiber_key)]
@@ -138,6 +142,7 @@ if submitted:
         rep.at[idx, "hub"] = hub
         rep.at[idx, "category"] = cat
         rep.at[idx, "fiber_key"] = fiber_key
+        rep.at[idx, "rep_style_no"] = rep_style_no.strip()
         rep.at[idx, "kc_no"] = kc_no
         rep.at[idx, "cert_date"] = cert_date
         rep.at[idx, "expiry_date"] = expiry_date
@@ -164,6 +169,7 @@ if submitted:
 
         new_row = {
             "rep_id": rep_id,
+            "rep_style_no": rep_style_no.strip(),
             "hub": hub,
             "category": cat,
             "fiber_key": fiber_key,
