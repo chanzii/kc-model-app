@@ -5,7 +5,7 @@ from lib.data_io import load_df, save_df_and_commit
 from lib.rules import normalize_fiber_key, expiry_status
 from lib.audit import log
 
-st.title("📑 대표모델")
+st.title("📑 대표모델 등록")
 
 rep = load_df("rep")
 hubs = load_df("hubs")
