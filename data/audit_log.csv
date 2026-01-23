@@ -30,3 +30,4 @@ timestamp,user,action,detail
 2026-01-23 00:45:43,unknown,STYLE_LINK,target=RM0006 count=1
 2026-01-23 01:29:03,unknown,MASTER_ADD_FIBER,아크릴 order=50
 2026-01-23 01:29:41,unknown,REP_ADD,RM0009 style=MYSOU02 광저우지사/외의류/폴리에스터|아크릴 KC=CB014R2493-6001
+2026-01-23 05:25:29,unknown,STYLE_LINK,target=RM0009 count=2
