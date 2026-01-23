@@ -26,3 +26,4 @@ timestamp,user,action,detail
 2026-01-22 09:33:10,찬진,REP_ADD,RM0009 style=asdfasfasf 필리핀 본공장/중의류/면|폴리에스터|나일론|폴리우레탄|레이온 KC=sdafadsfdsa
 2026-01-22 09:38:35,unknown,STYLE_LINK,target=RM0008 count=1
 2026-01-22 09:53:46,unknown,REP_ADD_DUP,RM0009 style=ASDFA 필리핀 본공장/중의류/면|나일론 KC=SDFAFAS
+2026-01-23 00:28:03,unknown,STYLE_LINK,target=RM0008 count=4
