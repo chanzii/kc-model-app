@@ -2,6 +2,9 @@ import streamlit as st
 
 def sidebar_user_controls():
     with st.sidebar:
+        st.markdown("---")
+        st.markdown("### 바로가기")
+        st.markdown("🔗 [제품안전정보센터](https://www.safetykorea.kr/release/itemSearch)")
         st.markdown("### 사용자")
         user = st.text_input("사용자명", value=st.session_state.get("user_name", ""))
         st.session_state["user_name"] = user or "unknown"
