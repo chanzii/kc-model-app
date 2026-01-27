@@ -2,7 +2,6 @@ import streamlit as st
 
 def sidebar_user_controls():
     with st.sidebar:
-        st.markdown("---")
         st.markdown("### 바로가기")
         st.markdown("🔗 [제품안전정보센터](https://www.safetykorea.kr/release/itemSearch)")
       
