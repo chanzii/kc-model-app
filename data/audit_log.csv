@@ -32,3 +32,4 @@ timestamp,user,action,detail
 2026-01-23 01:29:41,unknown,REP_ADD,RM0009 style=MYSOU02 광저우지사/외의류/폴리에스터|아크릴 KC=CB014R2493-6001
 2026-01-23 05:25:29,unknown,STYLE_LINK,target=RM0009 count=2
 2026-01-27 06:18:05,unknown,REP_ADD,RM0010 style=KKK111 필리핀 본공장/중의류/면|폴리에스터|나일론|폴리우레탄|레이온|아크릴 KC=KC1234
+2026-01-28 08:51:23,unknown,REP_ADD,RM0010 style=MYSOP04 필리핀 본공장/중의류/면 KC=CB014R2487-6008
