@@ -35,3 +35,4 @@ timestamp,user,action,detail
 2026-01-28 08:51:23,unknown,REP_ADD,RM0010 style=MYSOP04 필리핀 본공장/중의류/면 KC=CB014R2487-6008
 2026-01-28 08:58:18,unknown,STYLE_LINK,target=RM0009 count=1
 2026-01-28 10:27:40,unknown,STYLE_LINK,target=RM0010 count=1
+2026-01-30 09:02:11,unknown,STYLE_LINK,target=RM0006 count=1
