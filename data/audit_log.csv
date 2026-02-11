@@ -40,3 +40,4 @@ timestamp,user,action,detail
 2026-02-05 09:05:26,unknown,REP_ADD,RM0011 style=MYUPT03 필리핀 본공장/중의류/폴리에스터 KC=CB014R2487-6009
 2026-02-10 07:28:42,unknown,STYLE_LINK,target=RM0006 count=1
 2026-02-11 07:40:37,unknown,STYLE_LINK,target=RM0008 count=1
+2026-02-11 07:42:09,unknown,STYLE_LINK,target=RM0008 count=1
