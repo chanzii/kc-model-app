@@ -43,7 +43,29 @@ if st.session_state.get("is_admin") is not True:
     st.stop()
 st.markdown("### 연결할 대표모델 선택")
 
-rep_ids = rep["rep_id"].tolist()
+# ----------------------------
+# ✅ 조성섬유(fiber_key)로 대표모델 목록 필터링
+# ----------------------------
+rep_for_filter = rep.copy()
+rep_for_filter["fiber_key"] = rep_for_filter["fiber_key"].fillna("").astype(str).str.strip()
+
+fiber_options = sorted([x for x in rep_for_filter["fiber_key"].unique().tolist() if x])
+
+fiber_filter = st.selectbox(
+    "조성섬유로 필터(선택 시 대표모델 목록이 줄어듭니다)",
+    options=["(전체)"] + fiber_options,
+    index=0
+)
+
+if fiber_filter != "(전체)":
+    rep_filtered = rep_for_filter[rep_for_filter["fiber_key"] == fiber_filter].copy()
+else:
+    rep_filtered = rep_for_filter
+
+rep_ids = rep_filtered["rep_id"].tolist()
+
+st.caption(f"대표모델 {len(rep_ids)}개 표시 중 (전체 {len(rep_for_filter)}개)")
+# ----------------------------
 
 # ✅ 옵션은 rep_id로 갖고, 화면 표시만 label로 바꿈 (파싱 필요 없음)
 target_rep_id = st.selectbox(
