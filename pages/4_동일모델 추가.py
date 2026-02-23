@@ -1,3 +1,4 @@
+from lib.rules import normalize_fiber_key
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -8,6 +9,7 @@ st.title("🔗 동일모델(STYLENO) 연결")
 
 rep = load_df("rep")
 style = load_df("style")
+fibers = load_df("fibers")
 
 # 호환: rep_style_no 없으면 추가
 if not rep.empty and "rep_style_no" not in rep.columns:
@@ -44,30 +46,59 @@ if st.session_state.get("is_admin") is not True:
 st.markdown("### 연결할 대표모델 선택")
 
 # ----------------------------
-# ✅ 조성섬유(fiber_key)로 대표모델 목록 필터링
+# ✅ 조성섬유(개별 선택)로 대표모델 필터링 (홈 화면 방식)
 # ----------------------------
 rep_for_filter = rep.copy()
 rep_for_filter["fiber_key"] = rep_for_filter["fiber_key"].fillna("").astype(str).str.strip()
 
-fiber_options = sorted([x for x in rep_for_filter["fiber_key"].unique().tolist() if x])
+# 활성 섬유만 옵션으로 (없으면 rep에서 추출)
+active_fibers_df = fibers[fibers.get("active", "").astype(str).str.upper() == "TRUE"] if not fibers.empty else pd.DataFrame(columns=["fiber", "sort_order"])
+active_fibers = active_fibers_df["fiber"].dropna().astype(str).tolist()
 
-fiber_filter = st.selectbox(
-    "조성섬유로 필터(선택 시 대표모델 목록이 줄어듭니다)",
-    options=["(전체)"] + fiber_options,
-    index=0
+# 섬유 정렬 맵 (normalize에 사용)
+fiber_order = {}
+if not active_fibers_df.empty:
+    for _, r in active_fibers_df.iterrows():
+        f = str(r.get("fiber", "")).strip()
+        if not f:
+            continue
+        try:
+            fiber_order[f] = int(r.get("sort_order", "9999") or 9999)
+        except Exception:
+            fiber_order[f] = 9999
+
+# 옵션이 없으면 rep에서 섬유를 쪼개서 채움(안전망)
+if not active_fibers:
+    parts = []
+    for fk in rep_for_filter["fiber_key"].tolist():
+        if fk:
+            parts.extend([p.strip() for p in str(fk).split("|") if p.strip()])
+    active_fibers = sorted(list(dict.fromkeys(parts)))
+
+selected_fibers = st.multiselect(
+    "조성섬유로 필터(선택 시: 정확히 일치)",
+    options=active_fibers
 )
 
-if fiber_filter != "(전체)":
-    rep_filtered = rep_for_filter[rep_for_filter["fiber_key"] == fiber_filter].copy()
+# 필터 적용
+if selected_fibers:
+    key = normalize_fiber_key(selected_fibers, fiber_order)
+    rep_filtered = rep_for_filter[rep_for_filter["fiber_key"] == key].copy()
+    st.caption(f"선택한 조성 조합: `{key}`")
 else:
     rep_filtered = rep_for_filter
 
 rep_ids = rep_filtered["rep_id"].tolist()
 
 st.caption(f"대표모델 {len(rep_ids)}개 표시 중 (전체 {len(rep_for_filter)}개)")
-# ----------------------------
 
-# ✅ 옵션은 rep_id로 갖고, 화면 표시만 label로 바꿈 (파싱 필요 없음)
+if not rep_ids:
+    st.warning("해당 조성섬유 조합으로 등록된 대표모델이 없습니다. 조성섬유 선택을 바꾸거나 비워주세요.")
+    st.stop()
+
+# ----------------------------
+# ✅ 옵션은 rep_id로 갖고, 화면 표시만 label로 바꿈
+# ----------------------------
 target_rep_id = st.selectbox(
     "대표모델",
     options=rep_ids,
