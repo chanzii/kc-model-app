@@ -35,9 +35,13 @@ def make_korean_table_from_rep(df: pd.DataFrame) -> pd.DataFrame:
         "updated_at": "등록일",
     })
 
+    df_display["KC 링크"] = df_display["인증번호"].apply(
+        lambda x: f"https://www.safetykorea.kr/release/certDetail?certNum={x}"
+        if pd.notna(x) and str(x).strip() and str(x) != "nan" else None
+    )
     display_cols = [
         "스타일", "생산처", "분류", "조성섬유",
-        "인증번호", "신고일", "만료일", "잔여기간",
+        "인증번호", "KC 링크", "신고일", "만료일", "잔여기간",
         "등록", "등록일"
     ]
     display_cols = [c for c in display_cols if c in df_display.columns]
@@ -148,7 +152,11 @@ st.subheader("대표모델 결과")
 if rep_hit.empty:
     st.info("대표모델에서 일치하는 스타일이 없습니다.")
 else:
-    st.dataframe(make_korean_table_from_rep(rep_hit), use_container_width=True)
+    st.dataframe(
+        make_korean_table_from_rep(rep_hit),
+        column_config={"KC 링크": st.column_config.LinkColumn("KC 링크", display_text="🔗")},
+        use_container_width=True,
+    )
     # ✅ 대표모델 클릭 대신: 선택 → 연결된 동일모델 목록 보기
     show_linked_styles_for_rep(rep_hit)
 
@@ -177,6 +185,10 @@ else:
         st.warning(f"결과가 {len(out_kor)}개입니다. (상위 200개만 표시) 더 구체적으로 입력해 주세요.")
         out_kor = out_kor.head(200)
 
-    st.dataframe(out_kor, use_container_width=True)
+    st.dataframe(
+        out_kor,
+        column_config={"KC 링크": st.column_config.LinkColumn("KC 링크", display_text="🔗")},
+        use_container_width=True,
+    )
 
   

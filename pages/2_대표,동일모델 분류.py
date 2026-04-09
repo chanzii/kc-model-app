@@ -51,12 +51,17 @@ def make_korean_table_from_rep(df: pd.DataFrame) -> pd.DataFrame:
         "updated_at": "등록일",
     })
 
+    df_display["KC 링크"] = df_display["인증번호"].apply(
+        lambda x: f"https://www.safetykorea.kr/release/certDetail?certNum={x}"
+        if pd.notna(x) and str(x).strip() and str(x) != "nan" else None
+    )
     display_cols = [
         "스타일",
         "생산처",
         "분류",
         "조성섬유",
         "인증번호",
+        "KC 링크",
         "신고일",
         "만료일",
         "잔여기간",
@@ -150,5 +155,9 @@ else:
 if df.empty:
     st.warning("조건에 맞는 대표모델이 없습니다.")
 else:
-    st.dataframe(make_korean_table_from_rep(df), use_container_width=True)
+    st.dataframe(
+        make_korean_table_from_rep(df),
+        column_config={"KC 링크": st.column_config.LinkColumn("KC 링크", display_text="🔗")},
+        use_container_width=True,
+    )
     show_linked_styles_for_rep(df)
