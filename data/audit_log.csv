@@ -53,3 +53,4 @@ timestamp,user,action,detail
 2026-05-14 09:40:48,unknown,REP_ADD,RM0015 style=MYFOU02 필리핀 본공장/외의류/면|폴리에스터|폴리우레탄 KC=CB014R2487-6014
 2026-06-29 07:48:59,unknown,STYLE_LINK,target=RM0005 count=1
 2026-07-13 02:46:52,unknown,REP_ADD,RM0016 style=JXUOU07 필리핀 본공장/외의류/면 KC=CB014R2487-6011
+2026-07-13 02:47:47,unknown,REP_UPDATE,RM0016 style=JXUOU07 필리핀 본공장/외의류/면 KC=CB014R2487-6011
